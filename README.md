@@ -5,7 +5,7 @@ An ear-training mode (intervals, chord qualities, scale degrees) built on top of
 the M-VAVE FM-1. See [`fm1-ear-trainer-spec.md`](fm1-ear-trainer-spec.md) for the full spec this
 project follows.
 
-> **Status: work in progress, Fase 2 of 4 — not yet installed or tested on real hardware.**
+> **Status: work in progress, Phase 2 of 4 — not yet installed or tested on real hardware.**
 > Everything below has only been run on the host (unit tests) and in the browser emulator. There
 > is no firmware release yet, no `.fwsc` package, and no installation instructions for a real
 > FM-1. Treat this as an early preview, not something to flash onto your device. See
@@ -32,17 +32,17 @@ behind the latest commit until it's rebuilt and redeployed to the `gh-pages` bra
 
 ## Project status
 
-- **Fase 0 — ricognizione**: done. [`docs/RECON.md`](docs/RECON.md): why Felucca over FM1 Open,
+- **Phase 0 — groundwork**: done. [`docs/RECON.md`](docs/RECON.md): why Felucca over FM1 Open,
   the real controls (14 buttons, 7 encoders, 27 keys), the proposed Trainer control mapping.
-- **Fase 1 — nucleo didattico + test**: done. [`trainer/`](trainer/): the exercise logic (pure
+- **Phase 1 — exercise core + tests**: done. [`trainer/`](trainer/): the exercise logic (pure
   C99, no hardware or Felucca dependency, host-testable — `trainer/tests/run_tests.sh`).
-- **Fase 2 — interfaccia nell'emulatore**: done. The Trainer is reachable from `MENU > TRAINER`
+- **Phase 2 — emulator interface**: done. The Trainer is reachable from `MENU > TRAINER`
   in Felucca's own browser emulator (`felucca/web/emu/`); see above.
-- **Fase 3 — build e installazione sull'hardware**: *not started*. No `.fwsc` package has been
+- **Phase 3 — hardware build and install**: *not started*. No `.fwsc` package has been
   built, and nothing has been flashed to or tested on a real FM-1. The real-hardware build
-  (`felucca/build.sh`) needs a few more wiring changes first (see the note in the Fase 2 commit
+  (`felucca/build.sh`) needs a few more wiring changes first (see the note in the Phase 2 commit
   message) and, obviously, a device to test on.
-- **Fase 4 — rifinitura**: not started (advanced stats, Italian strings, more exercise types).
+- **Phase 4 — polish**: not started (advanced stats, Italian strings, more exercise types).
 
 ## Building it yourself
 
