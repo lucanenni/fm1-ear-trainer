@@ -21,11 +21,10 @@ wired in, runs entirely client-side via WebAssembly:
 
 **→ [lucanenni.github.io/fm1-ear-trainer](https://lucanenni.github.io/fm1-ear-trainer/)**
 
-Click "Switch on", hold **HOME** to open the settings menu, turn the **ALGORITHM** knob to the
-**SYSTEM** tab, turn **PRESETS** down to **TRAINER**, press **OCT+** to enter. Controls once
-inside: **PLAY** replays the question, **REC** plays/reveals the correct answer, **OCT-/OCT+**
-change the level, the **SELECT** encoder switches exercise (interval / chord / degree), **HOME**
-exits. Answer by playing the note(s) on the keybed.
+Click "Switch on", hold **ENV** for about a second to enter the Trainer (hold it again to exit,
+from anywhere). Controls once inside: **PLAY** replays the question, **REC** plays/reveals the
+correct answer, **OCT-/OCT+** change the level, the **SELECT** encoder switches exercise
+(interval / chord / degree). Answer by playing the note(s) on the keybed.
 
 This demo build (`felucca/build/emu/`) is compiled from the `main` branch; the live page may lag
 behind the latest commit until it's rebuilt and redeployed to the `gh-pages` branch.

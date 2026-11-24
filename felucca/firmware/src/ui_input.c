@@ -1548,7 +1548,7 @@ static void ui_notices(void)
 static void ui_input(void)
 {
     uint32_t pressed = fm1_input_edges(0), notes = fm1_input_note_edges(), now = fm1_ticks(), id, b, k;
-    uint32_t home, rec, save;
+    uint32_t home, rec, save, env;
     uint32_t oct;
     uint32_t lay, combo = 0, lytap, lkeys, glo, kq = 0;
     int32_t s, sel = 0, ks[4] = {0, 0, 0, 0};
@@ -1572,6 +1572,24 @@ static void ui_input(void)
     follow_poll();                                      /* (1.6, #242: SEQ's roll follows the play position) */
     if (scr_input(pressed, notes))                      /* MENU > SCREEN OFF: dark, or the wake gesture: swallowed */
         return;                                         /* (before the buttons' timers: no tap or hold after it) */
+    env = btn_hold(&ui.env_t0, B_ENV, now,               /* ENV held toggles the Trainer overlay; entering it needs no
+                                                          * menu, dialog, NAME, quick layer or UPDATE MODE countdown up */
+                   ui.trainer || (!ui.menu && !ui.confirm && !name_on() && !ui.layer && !ui.uboot));
+    if (env == BT_HOLD) {
+        if (ui.trainer) {
+            tr_exit();
+            ui.trainer = 0;
+        } else {
+            ui.trainer = 1;
+            tr_enter();
+        }
+        ui.pg_down &= (uint16_t)~(1u << panel.btn[B_ENV]);   /* no stale ENV page-tap once let go (its press, or the
+                                                              * whole hold, may have run with ui.trainer intercepting
+                                                              * input, so the normal pg_down/page_tap release below
+                                                              * never saw it) */
+        ui.force = 1;
+        return;
+    }
     if (ui.trainer) {                                   /* the ear-trainer overlay (trainer_felucca.c): its own input,
                                                           * nothing of the normal UI below */
         trainer_input(pressed, notes);
