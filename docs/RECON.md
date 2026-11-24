@@ -1,193 +1,193 @@
-# RECON — Fase 0
+# RECON — Phase 0
 
-Verificato sul codice sorgente clonato in `vendor/Felucca` (commit corrente di `main`, con submodule
-`firmware/bsp` e `firmware/engines`) e `vendor/fm1_open` (README `V14`). Dove le mie conclusioni
-correggono la spec (`fm1-ear-trainer-spec.md`), lo segnalo esplicitamente con **[DISCREPANZA]**.
+Verified against the source code cloned into `vendor/Felucca` (current commit of `main`, with
+submodules `firmware/bsp` and `firmware/engines`) and `vendor/fm1_open` (README `V14`). Where my
+conclusions correct the spec (`fm1-ear-trainer-spec.md`), I flag it explicitly with
+**[DISCREPANCY]**.
 
-## 1. Confronto Felucca vs FM1 Open e scelta
+## 1. Felucca vs FM1 Open comparison and choice
 
 | | Felucca | FM1 Open |
 |---|---|---|
-| Licenza | GPL-3.0-only (app) + MPL-2.0 (`firmware/bsp`) + MIT (`firmware/engines`) | GPLv3 **con eccezione di linking per l'SDK FM1** (`LICENSE.md`); il motore sonoro è un **SDK binario** con termini propri (`THIRD_PARTY.md`) |
-| Build hardware | macOS: Docker (`linux/amd64` debian) + toolchain JieLi Linux + AC79 SDK Apache-2.0. Linux x86-64: nativo | **Richiede Windows x64 + PowerShell**, toolchain JieLi Windows 2.5.3; nessun percorso macOS/Linux documentato per il build del firmware |
-| Sviluppo senza hardware | Sì: `tests/run_tests.sh` (unit/regression test su host) e `web/emu` (Emscripten → WebAssembly, demo browser) | Preview web (`Build-Web.ps1`), ma costruita con tooling PowerShell/WASI SDK; non ho trovato una suite di unit test host-side equivalente |
-| Motore audio | Sorgente completo (FM6 derivato da Dexed/msfa, più DRUM, PHYS, GRAIN, SLICE, SAMPLE, FORMANT, ADPCM, DIGITAL) | Binario chiuso (SDK); solo lo strato app è open |
-| Architettura UI | Pagine per famiglia (`FAM_*`) + "quick layer" (HOLD/SET) su 7 pulsanti; codice in stile "unity build" (molti `.c` si `#include`-ano a vicenda) | Non verificata in profondità (vedi §7, rischio) |
-| Documentazione | `BUILDING.md` dettagliato; **non esistono** `ARCHITECTURE.md`, `PORTING.md`, `PLUGINS.md`, `COMPATIBILITY.md` top-level citati dalla spec | `README.md` + `app/instrument.h` (API di tuning) |
+| License | GPL-3.0-only (app) + MPL-2.0 (`firmware/bsp`) + MIT (`firmware/engines`) | GPLv3 **with a linking exception for the FM1 SDK** (`LICENSE.md`); the sound engine is a **binary SDK** with its own terms (`THIRD_PARTY.md`) |
+| Hardware build | macOS: Docker (`linux/amd64` debian) + JieLi Linux toolchain + Apache-2.0 AC79 SDK. Linux x86-64: native | **Requires Windows x64 + PowerShell**, JieLi Windows toolchain 2.5.3; no documented macOS/Linux path for building the firmware |
+| Development without hardware | Yes: `tests/run_tests.sh` (unit/regression tests on the host) and `web/emu` (Emscripten → WebAssembly, browser demo) | Web preview (`Build-Web.ps1`), but built with PowerShell/WASI SDK tooling; I didn't find an equivalent host-side unit test suite |
+| Audio engine | Full source (FM6 derived from Dexed/msfa, plus DRUM, PHYS, GRAIN, SLICE, SAMPLE, FORMANT, ADPCM, DIGITAL) | Closed binary (SDK); only the app layer is open |
+| UI architecture | Pages per family (`FAM_*`) + a "quick layer" (HOLD/SET) on 7 buttons; "unity build" style code (many `.c` files `#include` each other) | Not verified in depth (see §7, risk) |
+| Documentation | Detailed `BUILDING.md`; **no** top-level `ARCHITECTURE.md`, `PORTING.md`, `PLUGINS.md`, `COMPATIBILITY.md` as cited by the spec | `README.md` + `app/instrument.h` (tuning API) |
 
-**[DISCREPANZA]** La spec (sezione 2) descrive per Felucca un livello host con `platforms/host`,
-`felucca_host.h`, build `./build.sh gen|web|sdl|host|test`. Non esiste nulla di tutto ciò nel
-repo attuale: non c'è cartella `platforms/`, non c'è `felucca_host.h`, `build.sh` non accetta
-sottocomandi (fa sempre il build firmware completo via `tools/build.py`), non c'è target SDL2 né
-libretro (verificato con una ricerca a tappeto, zero risultati). Esistono invece:
-- `tests/run_tests.sh` — unit/regression test su host (quello che la spec chiamava "build.sh test");
-- `web/emu/` — demo browser via Emscripten/WebAssembly (quello che la spec chiamava "build.sh web"),
-  già pubblicata su `https://hugelton.github.io/Felucca/webapp/try/`.
+**[DISCREPANCY]** The spec (section 2) describes Felucca as having a host layer with
+`platforms/host`, `felucca_host.h`, and a `./build.sh gen|web|sdl|host|test` build. None of that
+exists in the current repo: there's no `platforms/` folder, no `felucca_host.h`, `build.sh` takes
+no subcommands (it always does the full firmware build via `tools/build.py`), and there's no SDL2
+or libretro target (verified with an exhaustive search, zero results). What does exist instead:
+- `tests/run_tests.sh` — unit/regression tests on the host (what the spec called "build.sh test");
+- `web/emu/` — browser demo via Emscripten/WebAssembly (what the spec called "build.sh web"),
+  already published at `https://hugelton.github.io/Felucca/webapp/try/`.
 
-Nessun equivalente SDL2 desktop nativo: lo sviluppo "senza hardware" previsto dalla spec per la
-Fase 2 va fatto o nel browser (`web/emu`) o estendendo i test host (`tests/`), non in una build
-SDL separata.
+No native desktop SDL2 equivalent: the "no hardware" development the spec expects for Phase 2 has
+to happen either in the browser (`web/emu`) or by extending the host tests (`tests/`), not in a
+separate SDL build.
 
-**Scelta: Felucca**, confermata. Motivi, in ordine di peso:
-1. Motore sonoro e BSP interamente open (GPL/MPL/MIT): possiamo leggere e, se necessario, estendere
-   qualunque livello, cosa impossibile con l'SDK binario di FM1 Open.
-2. Build riproducibile su macOS (Docker) senza Windows.
-3. Esiste già un percorso di sviluppo/test senza hardware (`tests/run_tests.sh` + `web/emu`), anche
-   se con nomi e strumenti diversi da quelli ipotizzati in spec.
-4. Codice e commit message estremamente documentati riga per riga (ogni file spiega il "perché"),
-   il che riduce il rischio di rompere qualcosa per Trainer.
+**Choice: Felucca**, confirmed. Reasons, in order of weight:
+1. The sound engine and BSP are entirely open (GPL/MPL/MIT): we can read and, if needed, extend
+   any layer, which is impossible with FM1 Open's binary SDK.
+2. Reproducible build on macOS (Docker) without Windows.
+3. A no-hardware development/test path already exists (`tests/run_tests.sh` + `web/emu`), even if
+   under different names and tools than the spec assumed.
+4. Code and commit messages are extremely well documented line by line (every file explains the
+   "why"), which reduces the risk of breaking something for the Trainer.
 
-## 2. Come si aggiunge una nuova modalità/schermata
+## 2. How a new mode/screen is added
 
-Non esiste un sistema a "schermate" plugin-like. L'architettura reale (`firmware/src/`):
+There's no plugin-like "screens" system. The real architecture (`firmware/src/`):
 
-- **Loop principale** (`main.c`, `fm1_main`): dopo boot e init, gira per sempre chiamando ogni
-  frame (~60/s) `ui_input()` → `ui_leds()` → `ui_draw()`. Esistono già overlay che "rubano" il
-  loop principale (es. il countdown UBOOT in `main.c`, disegnato direttamente sopra tutto), quindi
-  c'è un precedente per una modalità che sostituisce temporaneamente input/draw normali.
-- **UI normale**: pagine organizzate per famiglia (`FAM_HOME`, `FAM_SCL`, `FAM_SEQ`, ...) definite
-  come tabelle (`page_t`), più 7 "quick layer" attivabili tenendo premuto un pulsante pagina
-  (`ui_layer.c`, tabella `LAYERS[]`): FX, GLO, SCL, EDIT, SEQ, REC. Ogni pulsante pagina ha già un
-  ruolo fisso.
-- **Stile del codice**: molti `.c` si includono a vicenda (es. `main.c` fa `#include "timer5.c"`,
-  `ui_layer.c` fa `#include "ui_tools.c"`) e le funzioni sono quasi tutte `static` — è un "unity
-  build", non moduli con header pubblici. Le funzioni di note on/off (`trk_note_on`, `trk_note_off`,
-  `trk_all_off` in `voice.c`) sono `static`, non esposte.
+- **Main loop** (`main.c`, `fm1_main`): after boot and init, runs forever calling, each frame
+  (~60/s), `ui_input()` → `ui_leds()` → `ui_draw()`. There are already overlays that "steal" the
+  main loop (e.g. the UBOOT countdown in `main.c`, drawn directly on top of everything), so there's
+  precedent for a mode that temporarily replaces normal input/draw.
+- **Normal UI**: pages organized by family (`FAM_HOME`, `FAM_SCL`, `FAM_SEQ`, ...) defined as
+  tables (`page_t`), plus 7 "quick layers" activated by holding a page button (`ui_layer.c`, table
+  `LAYERS[]`): FX, GLO, SCL, EDIT, SEQ, REC. Every page button already has a fixed role.
+- **Code style**: many `.c` files include each other (e.g. `main.c` does `#include "timer5.c"`,
+  `ui_layer.c` does `#include "ui_tools.c"`) and functions are almost all `static` — it's a "unity
+  build", not modules with public headers. The note on/off functions (`trk_note_on`,
+  `trk_note_off`, `trk_all_off` in `voice.c`) are `static`, not exposed.
 
-**Conseguenza per l'architettura richiesta (sezione 4 della spec):**
-- Il **nucleo didattico** (`trainer/`) può essere scritto in C puro, senza header di Felucca, esattamente
-  come richiesto: non deve conoscere nulla dell'hardware o dello stile unity-build.
-- Il **livello audio/UI** dentro Felucca, invece, non potrà limitarsi a "chiamare delle API
-  esistenti": quelle API (note on/off) oggi non sono pubbliche. Andranno aggiunte poche funzioni
-  ponte non-`static` (nuove, minime, isolate in un file proprio, es. `trainer_bridge.c`) che
-  richiamano `trk_note_on`/`trk_note_off`/`trk_all_off` sul `track_t` scelto per il Trainer. Questo
-  resta comunque un cambiamento piccolo e localizzato, coerente col vincolo "codice nuovo separato
-  dalla base" (sezione 4), ma è un rischio/costo che la spec non menzionava: va tenuto d'occhio nei
-  merge con l'upstream Felucca.
-- La **modalità Trainer** come "schermo" terrà lo stesso schema degli overlay esistenti: un flag
-  (es. `ui.trainer`) controllato in testa a `ui_input()`/`ui_draw()`/`ui_leds()` che, quando attivo,
-  salta la UI normale e usa routine di input/draw proprie (coerente con come UBOOT già si comporta).
+**Consequence for the required architecture (spec section 4):**
+- The **exercise core** (`trainer/`) can be written in plain C, with no Felucca headers, exactly
+  as required: it doesn't need to know anything about the hardware or the unity-build style.
+- The **audio/UI layer** inside Felucca, however, can't just "call existing APIs": those APIs
+  (note on/off) aren't public today. A few new, non-`static` bridge functions will need to be
+  added (new, minimal, isolated in their own file, e.g. `trainer_bridge.c`) that call
+  `trk_note_on`/`trk_note_off`/`trk_all_off` on the `track_t` chosen for the Trainer. This is still
+  a small, localized change, consistent with the "new code kept separate from the base" constraint
+  (section 4), but it's a risk/cost the spec didn't mention: worth watching in upstream Felucca
+  merges.
+- **Trainer mode** as a "screen" will follow the same pattern as the existing overlays: a flag
+  (e.g. `ui.trainer`) checked at the top of `ui_input()`/`ui_draw()`/`ui_leds()` that, when active,
+  skips the normal UI and uses its own input/draw routines (consistent with how UBOOT already
+  behaves).
 
-## 3. API di display, input, audio, salvataggio (riferimenti nel codice)
+## 3. Display, input, audio, storage APIs (code references)
 
-- **Input**: `firmware/bsp/boards/fm1/fm1_input.h` — matrice 11 colonne × 6 righe, 14 pulsanti
-  (id 0..13) + 27 tasti nota (id 14..40, nota 0 = F3 … nota 26 = G5) + 7 encoder in quadratura con
-  rilevamento "detent". API principali: `fm1_input_scan()`/`fm1_input_tick()` (polling/IRQ),
-  `fm1_input_edges()` (fronti pulsanti), `fm1_input_note_edges()` (fronti tasti),
-  `fm1_enc_take(ruolo)` (passi encoder dall'ultima lettura), `fm1_led_key(id, on)`.
-  `panel.c` mappa gli id di matrice ai 14 **nomi reali** dei pulsanti e ai 7 ruoli degli encoder
-  (vedi §4) — mappatura calibrabile sull'hardware vero (OCT- + OCT+ al boot), quindi i numeri sono
-  "best guess" finché non verificati su un FM-1 reale.
-- **Display**: `lcd.c` (driver TFT), `gfx.c`/`ui_draw.c`/`ui_graph.c` (primitive di disegno),
-  `ui.c`/`ui_menu.c`/`ui_help.c` (menu e help). TFT a colori, confermato 240×240 come area utile
-  (vedi `lcd_fill(0, 0, 240, 240, ...)` usato ovunque in `main.c`) — la spec dice "1,54\"" ma non
-  specifica la risoluzione in pixel; 240×240 è coerente con un pannello da 1,54" comune.
-- **Audio**: `audio.c` (avvio/stop, `fm1_audio_stop()`), `voice.c` (gestione voci per traccia,
-  `NVOICE` = budget condiviso), `engines.c`/`eng_fm6.c`/`fm6_core.c` (motore FM, 32 tabelle di
-  algoritmo, derivato da msfa/Dexed — confermato). Note on/off oggi `static` in `voice.c`
-  (`trk_note_on`, `trk_note_off`, `trk_all_off`): da esporre con un bridge (vedi §2).
-- **Salvataggio**: `storage.c`/`storage_hw.c` (flash), `settings_persist.c` (record di impostazioni
-  con "magic" + migrazione versione su versione, es. `PERSIST_MAGIC`), `project.c` (progetti/preset).
-  Il meccanismo è già pensato per sopravvivere a spegnimenti improvvisi e ad aggiornamenti di
-  firmware (vecchi formati vengono migrati, non scartati) — adatto a ospitare un blocco dati
-  Trainer (impostazioni + statistiche) seguendo lo stesso schema a "magic number" versionato.
-  Verifica approfondita di `storage.c`/`storage_hw.c` rimandata alla Fase 1, quando si progetta il
-  formato dati del Trainer.
+- **Input**: `firmware/bsp/boards/fm1/fm1_input.h` — 11-column × 6-row matrix, 14 buttons
+  (ids 0..13) + 27 note keys (ids 14..40, note 0 = F3 … note 26 = G5) + 7 quadrature encoders with
+  "detent" detection. Main APIs: `fm1_input_scan()`/`fm1_input_tick()` (polling/IRQ),
+  `fm1_input_edges()` (button edges), `fm1_input_note_edges()` (key edges),
+  `fm1_enc_take(role)` (encoder steps since the last read), `fm1_led_key(id, on)`.
+  `panel.c` maps the matrix ids to the 14 buttons' **real names** and to the 7 encoders' roles
+  (see §4) — this mapping is calibrated on real hardware (OCT- + OCT+ at boot), so the numbers are
+  a "best guess" until verified on a real FM-1.
+- **Display**: `lcd.c` (TFT driver), `gfx.c`/`ui_draw.c`/`ui_graph.c` (drawing primitives),
+  `ui.c`/`ui_menu.c`/`ui_help.c` (menu and help). Color TFT, confirmed 240×240 as the usable area
+  (see `lcd_fill(0, 0, 240, 240, ...)` used throughout `main.c`) — the spec says "1.54"" but
+  doesn't give the pixel resolution; 240×240 is consistent with a common 1.54" panel.
+- **Audio**: `audio.c` (start/stop, `fm1_audio_stop()`), `voice.c` (per-track voice management,
+  `NVOICE` = shared budget), `engines.c`/`eng_fm6.c`/`fm6_core.c` (FM engine, 32 algorithm tables,
+  derived from msfa/Dexed — confirmed). Note on/off are currently `static` in `voice.c`
+  (`trk_note_on`, `trk_note_off`, `trk_all_off`): need to be exposed with a bridge (see §2).
+- **Storage**: `storage.c`/`storage_hw.c` (flash), `settings_persist.c` (settings records with a
+  "magic" value + version-to-version migration, e.g. `PERSIST_MAGIC`), `project.c`
+  (projects/presets). The mechanism is already designed to survive sudden power loss and firmware
+  updates (old formats are migrated, not discarded) — suitable for hosting a Trainer data block
+  (settings + statistics) following the same versioned "magic number" scheme. A deeper look at
+  `storage.c`/`storage_hw.c` is deferred to Phase 1, when the Trainer's data format gets designed.
 
-## 4. Controlli reali e proposta di mappatura (da approvare)
+## 4. Real controls and proposed mapping (to be approved)
 
-**[DISCREPANZA]** La spec (sezione 2) parla di "circa 12 pulsanti di modalità" e "4 encoder nella
-parte parametri". Il codice (`panel.c`, `fm1_input.h`) dà numeri precisi e diversi:
+**[DISCREPANCY]** The spec (section 2) talks about "about 12 mode buttons" and "4 encoders in the
+parameter section". The code (`panel.c`, `fm1_input.h`) gives precise, different numbers:
 
-- **14 pulsanti reali** (matrice id 0..13, nomi da `panel.c`):
+- **14 real buttons** (matrix ids 0..13, names from `panel.c`):
   `FX`, `SCL`, `ENV`, `LFO`, `EDIT`, `GLO`, `HOME`, `SAVE`, `ARP`, `SEQ`, `PLAY`, `REC`, `OCT-`, `OCT+`.
-- **7 encoder reali** (non 4): `SELECT`, `ALGORITHM`, `PRESETS`, `KNOB 1`, `KNOB 2`, `KNOB 3`, `KNOB 4`.
-- **27 tasti nota** (F3..G5), di cui **16 tasti bianchi** (F3 G3 A3 B3 C4 D4 E4 F4 G4 A4 B4 C5 D5 E5
-  F5 G5) — questo numero **coincide** con la spec ("16 tasti bianchi... usati come step").
+- **7 real encoders** (not 4): `SELECT`, `ALGORITHM`, `PRESETS`, `KNOB 1`, `KNOB 2`, `KNOB 3`, `KNOB 4`.
+- **27 note keys** (F3..G5), of which **16 are white keys** (F3 G3 A3 B3 C4 D4 E4 F4 G4 A4 B4 C5 D5
+  E5 F5 G5) — this number **matches** the spec ("16 white keys... used as steps").
 
-Tutti i 14 pulsanti hanno già un ruolo nella UI normale di Felucca (pagine o quick layer); **nessuno
-è libero**. Per entrare/uscire dal Trainer senza rubare un pulsante già in uso, propongo (da
-discutere e approvare prima di implementare, come richiesto dalla spec):
+All 14 buttons already have a role in Felucca's normal UI (pages or quick layers); **none is
+free**. To enter/exit the Trainer without stealing an already-used button, I propose (to be
+discussed and approved before implementing, as the spec requires):
 
-- **Ingresso**: una voce di menu (`HOME` → `MENU` → nuova voce `TRAINER`), più eventualmente una
-  combinazione "hold" coerente con lo stile esistente (es. `HOME` tenuto premuto a lungo, sul
-  modello delle altre quick-layer), da verificare che non collida con la pressione lunga già
-  usata da `HOME` nella UI normale.
-- **Uscita**: stesso percorso (`MENU` → `EXIT TRAINER`), oppure `HOME` di nuovo se in Trainer si
-  intercetta prima della UI normale.
-- **Dentro al Trainer** (funzioni da sezione 5 della spec), proposta di riuso dei ruoli già
-  "naturali": `PLAY` = ripeti/conferma, `REC` = mostra risposta, `SAVE` = (non usato o reset stats
-  con conferma), `OCT-`/`OCT+` = livello su/giù, `KNOB 1..4` = scorrere opzioni/impostazioni,
-  `SELECT`/`PRESETS` = scegliere esercizio/livello. Nessuna di queste assegnazioni è definitiva:
-  vanno confermate col codice `ui_input.c` reale (quali pulsanti generano eventi "hold" vs "tap")
-  e, idealmente, su hardware vero, prima della Fase 2.
+- **Entry**: a menu item (`HOME` → `MENU` → new `TRAINER` entry), plus possibly a "hold"
+  combination consistent with the existing style (e.g. `HOME` held long, following the other
+  quick-layer pattern), to be checked against the long-press `HOME` already uses in the normal UI.
+- **Exit**: the same path (`MENU` → `EXIT TRAINER`), or `HOME` again if Trainer intercepts it
+  before the normal UI does.
+- **Inside the Trainer** (functions from spec section 5), proposed reuse of already "natural"
+  roles: `PLAY` = replay/confirm, `REC` = show answer, `SAVE` = (unused, or reset stats with
+  confirmation), `OCT-`/`OCT+` = level down/up, `KNOB 1..4` = scroll through options/settings,
+  `SELECT`/`PRESETS` = choose exercise/level. None of these assignments is final: they need to be
+  confirmed against the real `ui_input.c` code (which buttons fire "hold" vs "tap" events) and,
+  ideally, on real hardware, before Phase 2.
 
-## 5. Toolchain per la build hardware
+## 5. Toolchain for the hardware build
 
-- **macOS** (ambiente dell'utente): Python 3 + Pillow + fontTools; Docker Desktop (il toolchain
-  JieLi è Linux x86-64 only, girato in container `linux/amd64 debian:bookworm-slim`, via Rosetta su
-  Apple Silicon); toolchain JieLi (`tools/get_toolchain.sh` → `~/.jieli/toolchain`); JieLi AC79 SDK
-  Apache-2.0 (`git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13
-  https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git ~/fw-AC79_AIoT_SDK`); Node.js opzionale (test
-  web); Emscripten opzionale (`web/emu`).
-- Build: `./build.sh` (debug) o `./build.sh --release X.Y` (release, assegna anche l'identity).
-- Nessuno di questi strumenti è ancora installato in questa sessione: andranno scaricati quando si
-  arriverà alla Fase 3 (o prima, se si vuole verificare la build reale già in Fase 1/2). Non ho
-  eseguito download né installazioni in questa fase.
+- **macOS** (the user's environment): Python 3 + Pillow + fontTools; Docker Desktop (the JieLi
+  toolchain is Linux x86-64 only, run in a `linux/amd64 debian:bookworm-slim` container, via
+  Rosetta on Apple Silicon); JieLi toolchain (`tools/get_toolchain.sh` → `~/.jieli/toolchain`);
+  JieLi AC79 SDK Apache-2.0 (`git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13
+  https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git ~/fw-AC79_AIoT_SDK`); Node.js optional (web
+  tests); Emscripten optional (`web/emu`).
+- Build: `./build.sh` (debug) or `./build.sh --release X.Y` (release, also assigns the identity).
+- None of these tools are installed in this session yet: they'll be downloaded when reaching
+  Phase 3 (or earlier, to verify the real build already in Phase 1/2). No downloads or
+  installations were performed at this stage.
 
-## 6. Identity del firmware
+## 6. Firmware identity
 
-Il meccanismo reale (`tools/build.py`, `tools/fm1pkg_make.py`, `firmware/src/felucca.c`,
+The real mechanism (`tools/build.py`, `tools/fm1pkg_make.py`, `firmware/src/felucca.c`,
 `tools/fm1_install.py`):
-- L'identity è una stringa di 8 caratteri tipo `FM-1_9XY`, incorporata sia nel binario
-  (`FELUCCA_ID` in `felucca.c`, default `"FM-1_900"`) sia nel pacchetto `.fwsc`
-  (`PRODUCT` in `build.py`, stesso default; con `--release X.Y` diventa `FM-1_9` + le due cifre).
-  È scritta come marcatore ripetuto nei primi 20 blocchi del pacchetto (`fm1pkg_make.py`).
-- L'installer (`fm1_install.py`) legge l'identity del dispositivo connesso e, dopo l'installazione,
-  **verifica** che l'identity scritta corrisponda a quella del pacchetto (uscita 6 = "wrong model",
-  un codice diverso = "another identity after install"); è un controllo di coerenza, non un
-  meccanismo di sicurezza bloccante lato firmware.
-- Il firmware ufficiale stock è riconosciuto per hash SHA-256 esatto (due costanti nello script),
-  non per identity — tornare al firmware ufficiale M-Updater non dipende dalla nostra identity.
+- The identity is an 8-character string like `FM-1_9XY`, embedded both in the binary
+  (`FELUCCA_ID` in `felucca.c`, default `"FM-1_900"`) and in the `.fwsc` package (`PRODUCT` in
+  `build.py`, same default; with `--release X.Y` it becomes `FM-1_9` + the two digits). It's
+  written as a repeated marker in the package's first 20 blocks (`fm1pkg_make.py`).
+- The installer (`fm1_install.py`) reads the connected device's identity and, after installing,
+  **verifies** that the written identity matches the package's (exit code 6 = "wrong model", a
+  different code = "another identity after install"); it's a consistency check, not a
+  firmware-side security gate.
+- The official stock firmware is recognized by an exact SHA-256 hash (two constants in the
+  script), not by identity — going back to the official M-Updater firmware doesn't depend on our
+  identity.
 
-**Proposta per il progetto**: usare un'identity propria, distinta sia dal default Felucca
-(`FM-1_9XY`, riservato agli aggiornamenti upstream) sia da quella del firmware ufficiale, per non
-essere scambiati per un aggiornamento Felucca o per il firmware di fabbrica. Serve una stringa di
-esattamente 8 caratteri; propongo qualcosa come `FM-1_EA1` (EA = Ear trainer) — **da confermare con
-l'utente** prima di impostarla, perché cambia cosa il web-installer e `fm1_install.py` accettano
-come "lo stesso firmware" per i futuri aggiornamenti incrementali del progetto.
+**Proposal for the project**: use our own identity, distinct both from Felucca's default
+(`FM-1_9XY`, reserved for upstream updates) and from the official firmware's, so as not to be
+mistaken for a Felucca update or the factory firmware. It needs to be exactly 8 characters; I
+propose something like `FM-1_EA1` (EA = Ear trainer) — **to be confirmed with the user** before
+setting it, because it determines what the web installer and `fm1_install.py` accept as "the same
+firmware" for the project's future incremental updates.
 
-## 7. Rischi individuati
+## 7. Identified risks
 
-1. **API audio non pubbliche**: le funzioni di note on/off sono `static` nel file monolitico
-   `voice.c`. Richiede un piccolo bridge nuovo (rischio basso, ma non nullo per i merge upstream).
-2. **Nessuna build SDL/desktop nativa**: lo sviluppo "senza hardware" previsto per la Fase 2 dovrà
-   usare `web/emu` (richiede Emscripten) o i test host (`tests/run_tests.sh`), non un eseguibile
-   desktop come ipotizzato in spec. Va verificato che `web/emu` sia comodo per iterare una UI
-   interattiva (il browser demo, dalla doc, non emula USB/MIDI/TRS/sample utente — accettabile per
-   il Trainer che non ne ha bisogno).
-3. **Tutti i pulsanti fisici sono già assegnati**: entrare/uscire dal Trainer richiede
-   necessariamente un nuovo gesto o una voce di menu; nessuna scelta è "ovvia" e serve conferma
-   utente (sezione 4 sopra) prima di implementare, come richiesto dalla spec stessa.
-4. **Toolchain hardware non banale su macOS**: Docker + toolchain Linux + SDK Apache-2.0 di terze
-   parti da scaricare da Gitee; da verificare che il download funzioni dalla rete dell'utente
-   quando si arriva alla Fase 3 (non ancora provato).
-5. **Build FM-1 Open non verificata**: essendo Windows-only, non ho potuto verificarne la build;
-   l'informazione sul binario SDK viene dal README, non da un tentativo di build reale.
-6. **Divergenza spec/codice sui controlli**: la spec sottostima encoder (4 vs 7 reali) e non elenca
-   i nomi reali dei 14 pulsanti; corretto qui, ma la sezione 2 del file di spec dovrebbe essere
-   aggiornata (vedi nota finale).
-7. **Verifica incompleta**: questa ricognizione ha letto la documentazione principale e le parti di
-   codice più rilevanti per l'architettura (input, panel, main loop, voice, settings, identity), ma
-   non l'intero albero (76 file in `firmware/src/`, più BSP ed engines). Dettagli su `project.c`,
-   `storage_hw.c` e sulla UI di menu (`ui_menu.c`) andranno approfonditi all'inizio della Fase 1,
-   quando servirà il formato dati esatto per statistiche/impostazioni persistenti.
+1. **Non-public audio APIs**: the note on/off functions are `static` in the monolithic
+   `voice.c` file. Requires a small new bridge (low risk, but not zero for upstream merges).
+2. **No native SDL/desktop build**: the "no hardware" development expected for Phase 2 will have
+   to use `web/emu` (requires Emscripten) or the host tests (`tests/run_tests.sh`), not a desktop
+   executable as the spec assumed. Need to verify that `web/emu` is comfortable for iterating on an
+   interactive UI (the browser demo, per the docs, doesn't emulate USB/MIDI/TRS/user samples —
+   acceptable for the Trainer, which doesn't need any of that).
+3. **All physical buttons are already assigned**: entering/exiting the Trainer necessarily
+   requires a new gesture or a menu entry; no choice is "obvious" and needs user confirmation
+   (section 4 above) before implementing, as the spec itself requires.
+4. **Non-trivial hardware toolchain on macOS**: Docker + Linux toolchain + third-party Apache-2.0
+   SDK to download from Gitee; need to verify the download works from the user's network once
+   Phase 3 is reached (not yet tried).
+5. **FM1 Open build unverified**: being Windows-only, I couldn't verify its build; the information
+   about the binary SDK comes from the README, not from an actual build attempt.
+6. **Spec/code divergence on the controls**: the spec undercounts encoders (4 vs. 7 real) and
+   doesn't list the 14 buttons' real names; corrected here, but spec section 2 should be updated
+   (see final note).
+7. **Incomplete verification**: this recon read the main documentation and the code parts most
+   relevant to the architecture (input, panel, main loop, voice, settings, identity), but not the
+   whole tree (76 files in `firmware/src/`, plus BSP and engines). Details on `project.c`,
+   `storage_hw.c` and the menu UI (`ui_menu.c`) will need a closer look at the start of Phase 1,
+   when the exact data format for persistent statistics/settings is needed.
 
-## 8. Nota sulla spec
+## 8. Note on the spec
 
-Come richiesto dalla sezione 8 della spec ("quando un'informazione... risulta sbagliata rispetto al
-codice, vale il codice"): la sezione 2 di `fm1-ear-trainer-spec.md` (tabella basi software, in
-particolare la riga Felucca) contiene affermazioni non verificate nel codice attuale
-(`platforms/host`, `felucca_host.h`, target `web|sdl|host|test` di `build.sh`, "fino a 12 voci").
-Non l'ho modificata in questa fase per non alterare un documento di riferimento senza conferma
-esplicita; segnalo qui le correzioni e aspetto indicazioni se aggiornarla.
+As required by spec section 8 ("when information... turns out to be wrong relative to the code,
+the code wins"): section 2 of `fm1-ear-trainer-spec.md` (software-bases table, specifically the
+Felucca row) contains claims not verified in the current code (`platforms/host`,
+`felucca_host.h`, `build.sh` targets `web|sdl|host|test`, "up to 12 voices"). I haven't changed it
+at this stage so as not to alter a reference document without explicit confirmation; I'm flagging
+the corrections here and waiting for guidance on whether to update it.
