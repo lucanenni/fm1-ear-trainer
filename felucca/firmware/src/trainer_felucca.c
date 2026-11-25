@@ -257,6 +257,11 @@ static void trainer_input(uint32_t pressed, uint32_t notes)
 
 /* ------------------------------------------------------------------ draw --- */
 static const char *const TR_EX_NAME[TRAINER_EX_COUNT] = {"INTERVAL", "CHORD", "DEGREE"};
+static const char *const TR_EX_HINT[TRAINER_EX_COUNT] = {
+    "PLAY THE 2ND NOTE, ANY OCTAVE",
+    "PLAY ALL CHORD NOTES TOGETHER",
+    "PLAY THE TARGET NOTE",
+};
 
 static uint32_t tr_fmt_u32(char *b, uint32_t v)
 {
@@ -294,6 +299,8 @@ static void draw_trainer(void)
         draw_text_box(0, 126, 240, &AF_M, tr_answer_name(&tr_sess.current, buf), T_THEME, 1);
     } else {
         draw_text_box(0, 100, 240, &AF_M, tr_playing ? "LISTEN..." : "YOUR ANSWER", T_TEXT, 1);
+        if (!tr_playing)
+            draw_text_box(0, 130, 240, &AF_S, TR_EX_HINT[tr_cfg.ex], T_MID, 1);
     }
     len = tr_fmt_u32(buf, tr_sess.correct);
     buf[len++] = '/';
