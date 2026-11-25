@@ -1,5 +1,7 @@
 #include "trainer_question.h"
 #include "trainer_chord.h"
+#include "trainer_interval.h"
+#include "trainer_degree.h"
 
 static uint8_t pitch_class(int8_t note)
 {
@@ -10,12 +12,16 @@ static uint8_t pitch_class(int8_t note)
 static trainer_eval_t eval_interval(const trainer_question_t *q, const int8_t *notes, uint8_t n,
                                      bool accept_any_octave)
 {
+    uint8_t want_pc;
     if (n != 1)
         return TRAINER_WRONG;
+    /* the interval transposed to C, not the actual (random-root) note heard: tests recognizing
+     * the interval, not recalling the question's root */
+    want_pc = trainer_interval_pc_from_c(q->answer.interval.semitones,
+                                          (trainer_interval_dir_t)q->answer.interval.dir);
     if (accept_any_octave)
-        return pitch_class(notes[0]) == pitch_class(q->answer.interval.answer_note) ? TRAINER_CORRECT
-                                                                                      : TRAINER_WRONG;
-    return notes[0] == q->answer.interval.answer_note ? TRAINER_CORRECT : TRAINER_WRONG;
+        return pitch_class(notes[0]) == want_pc ? TRAINER_CORRECT : TRAINER_WRONG;
+    return notes[0] == (int8_t)(60 + want_pc) ? TRAINER_CORRECT : TRAINER_WRONG;
 }
 
 static bool pc_set_has(const uint8_t *set, uint8_t n, uint8_t pc)
@@ -49,10 +55,14 @@ static trainer_eval_t eval_chord(const trainer_question_t *q, const int8_t *note
 
 static trainer_eval_t eval_degree(const trainer_question_t *q, const int8_t *notes, uint8_t n)
 {
+    uint8_t want_pc;
     if (n != 1)
         return TRAINER_WRONG;
-    return pitch_class(notes[0]) == pitch_class(q->answer.degree.target_note) ? TRAINER_CORRECT
-                                                                                : TRAINER_WRONG;
+    /* the degree with the tonic on C, not the actual (random-tonic) note heard: tests
+     * recognizing the degree, not recalling the question's tonic */
+    want_pc = trainer_degree_pc_from_c((trainer_scale_type_t)q->answer.degree.scale_type,
+                                        q->answer.degree.degree);
+    return pitch_class(notes[0]) == want_pc ? TRAINER_CORRECT : TRAINER_WRONG;
 }
 
 trainer_eval_t trainer_evaluate_played(const trainer_question_t *q, const int8_t *notes,

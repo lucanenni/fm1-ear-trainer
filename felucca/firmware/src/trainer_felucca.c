@@ -258,9 +258,9 @@ static void trainer_input(uint32_t pressed, uint32_t notes)
 /* ------------------------------------------------------------------ draw --- */
 static const char *const TR_EX_NAME[TRAINER_EX_COUNT] = {"INTERVAL", "CHORD", "DEGREE"};
 static const char *const TR_EX_HINT[TRAINER_EX_COUNT] = {
-    "PLAY THE 2ND NOTE, ANY OCTAVE",
+    "PLAY THE INTERVAL FROM C",
     "PLAY ALL CHORD NOTES TOGETHER",
-    "PLAY THE TARGET NOTE",
+    "PLAY THE DEGREE FROM C",
 };
 
 static uint32_t tr_fmt_u32(char *b, uint32_t v)

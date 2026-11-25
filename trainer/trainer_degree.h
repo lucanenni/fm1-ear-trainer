@@ -33,4 +33,9 @@ typedef struct {
 bool trainer_degree_generate(const trainer_degree_config_t *cfg, trainer_rng_t *rng,
                               trainer_question_t *out);
 
+/* The scale degree's pitch class with the tonic on C (0..11), ignoring the question's actual
+ * (randomly chosen) tonic: what a "suonando" answer must match, so answering tests recognizing
+ * the degree itself rather than recalling the tonic that happened to play. */
+uint8_t trainer_degree_pc_from_c(trainer_scale_type_t scale, uint8_t degree);
+
 #endif

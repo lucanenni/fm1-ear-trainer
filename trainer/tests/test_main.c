@@ -94,6 +94,8 @@ static void test_interval_evaluate(void)
     q.type = TRAINER_EX_INTERVAL;
     q.answer.interval.ref_note = 60;
     q.answer.interval.answer_note = 69;
+    q.answer.interval.semitones = 9;   /* root (60=C) + 9 semitones ascending = 69 */
+    q.answer.interval.dir = TRAINER_DIR_ASC;
 
     note = 69;
     CHECK(trainer_evaluate_played(&q, &note, 1, false) == TRAINER_CORRECT);
@@ -102,6 +104,22 @@ static void test_interval_evaluate(void)
     note = 69 + 12;
     CHECK(trainer_evaluate_played(&q, &note, 1, false) == TRAINER_WRONG);
     CHECK(trainer_evaluate_played(&q, &note, 1, true) == TRAINER_CORRECT);
+
+    /* transposed-to-C: a question rooted elsewhere (D, not C) still expects the interval applied
+     * to C, not the literal note heard */
+    q.answer.interval.ref_note = 62;        /* D: this question's actual root */
+    q.answer.interval.answer_note = 66;     /* F#: the literal note heard (D + major 3rd) */
+    q.answer.interval.semitones = 4;        /* major 3rd */
+    q.answer.interval.dir = TRAINER_DIR_ASC;
+    note = 64;                              /* E: major 3rd above C */
+    CHECK(trainer_evaluate_played(&q, &note, 1, false) == TRAINER_CORRECT);
+    note = 66;                              /* F#: the literal note heard - no longer accepted */
+    CHECK(trainer_evaluate_played(&q, &note, 1, false) == TRAINER_WRONG);
+
+    q.answer.interval.dir = TRAINER_DIR_DESC;
+    note = (int8_t)(60 + 8);                /* Ab (pc 8): major 3rd below C, any-octave=false still
+                                              * anchors to the octave starting on middle C */
+    CHECK(trainer_evaluate_played(&q, &note, 1, false) == TRAINER_CORRECT);
 
     q.item_id = 0xABCD;
     CHECK(trainer_evaluate_chosen(&q, 0xABCD) == TRAINER_CORRECT);
@@ -180,6 +198,19 @@ static void test_degree_generate_and_evaluate(void)
     CHECK(trainer_evaluate_played(&q, &note, 1, false) == TRAINER_CORRECT);
     note = 66;
     CHECK(trainer_evaluate_played(&q, &note, 1, false) == TRAINER_WRONG);
+
+    /* transposed-to-C: a question rooted elsewhere (D, not C) still expects the degree applied
+     * to C major, not the literal note heard */
+    cfg.degree_mask = 1u << (3 - 1);   /* degree 3 (major 3rd = +4) only */
+    cfg.root_min = cfg.root_max = 62;  /* D */
+    CHECK(trainer_degree_generate(&cfg, &rng, &q));
+    CHECK(q.answer.degree.target_note == 62 + 4);   /* F#: the literal note heard */
+    note = 64;                                      /* E: major 3rd above C */
+    CHECK(trainer_evaluate_played(&q, &note, 1, false) == TRAINER_CORRECT);
+    note = 62 + 4;                                  /* F#: the literal note - no longer accepted */
+    CHECK(trainer_evaluate_played(&q, &note, 1, false) == TRAINER_WRONG);
+    cfg.degree_mask = 1u << (5 - 1);
+    cfg.root_min = cfg.root_max = 60;
 
     cfg.cadence_mask = TRAINER_CADENCE_BIT(TRAINER_CADENCE_DRONE);
     CHECK(trainer_degree_generate(&cfg, &rng, &q));

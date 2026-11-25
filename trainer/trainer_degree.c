@@ -88,3 +88,8 @@ bool trainer_degree_generate(const trainer_degree_config_t *cfg, trainer_rng_t *
     out->item_id = TRAINER_DEGREE_ITEM_ID(scale, degree_idx + 1u);
     return true;
 }
+
+uint8_t trainer_degree_pc_from_c(trainer_scale_type_t scale, uint8_t degree)
+{
+    return (uint8_t)steps_of(scale)[degree - 1u];
+}

@@ -59,3 +59,9 @@ bool trainer_interval_generate(const trainer_interval_config_t *cfg, trainer_rng
     out->item_id = TRAINER_INTERVAL_ITEM_ID(semitones_idx + 1u, dir);
     return true;
 }
+
+uint8_t trainer_interval_pc_from_c(uint32_t semitones, trainer_interval_dir_t dir)
+{
+    uint32_t s = semitones % 12u;
+    return (uint8_t)(dir == TRAINER_DIR_DESC ? (12u - s) % 12u : s);
+}

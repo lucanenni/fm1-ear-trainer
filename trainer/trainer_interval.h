@@ -39,4 +39,9 @@ const char *trainer_interval_name(uint32_t semitones);
 bool trainer_interval_generate(const trainer_interval_config_t *cfg, trainer_rng_t *rng,
                                 trainer_question_t *out);
 
+/* The interval's second note transposed to start on C (pitch class 0..11), ignoring the
+ * question's actual (randomly chosen) root: what a "suonando" answer must match, so answering
+ * tests recognizing the interval itself rather than recalling the root that happened to play. */
+uint8_t trainer_interval_pc_from_c(uint32_t semitones, trainer_interval_dir_t dir);
+
 #endif
